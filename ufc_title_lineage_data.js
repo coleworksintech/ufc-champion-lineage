@@ -16,6 +16,13 @@
 // UFC 328). Note: tonight's actual event is UFC 330 (Makhachev vs. Ian Machado Garry for Welterweight,
 // Dern vs. Gillian Robertson for Women's Strawweight) — not yet contested at time of writing, so not
 // included. UFC 331 (Van vs. Pantoja rematch) is scheduled for Sep 19, 2026.
+//
+// v5 (2026-08-16): added UFC 330 (Aug 15, 2026) results — Islam Makhachev def. Ian Machado Garry
+// (Welterweight defense, also his UFC-record 17th straight win) and Mackenzie Dern def. Gillian
+// Robertson (Women's Strawweight defense). Verified BMF history is already complete as-is (Masvidal
+// vs. Diaz at UFC 244 was already present in this file). Also added WIN_STREAKS below for a "longest
+// winning streaks" ranking — note this tracks ALL UFC fights per fighter (not just title fights), so
+// unlike FIGHTS it's hand-researched rather than derived, since the graph itself only models title bouts.
 
 const FIGHTS = [
 // ===== HEAVYWEIGHT =====
@@ -233,6 +240,7 @@ const FIGHTS = [
 {division:"Welterweight", date:"2024-07-27", event:"UFC 304", winner:"Belal Muhammad", loser:"Leon Edwards", type:"change"},
 {division:"Welterweight", date:"2025-05-10", event:"UFC 315", winner:"Jack Della Maddalena", loser:"Belal Muhammad", type:"change"},
 {division:"Welterweight", date:"2025-11-15", event:"UFC 322", winner:"Islam Makhachev", loser:"Jack Della Maddalena", type:"change"},
+{division:"Welterweight", date:"2026-08-15", event:"UFC 330", winner:"Islam Makhachev", loser:"Ian Machado Garry", type:"defense"},
 
 // ===== LIGHTWEIGHT =====
 {division:"Lightweight", date:"2001-02-23", event:"UFC 30", winner:"Jens Pulver", loser:"Caol Uno", type:"change"},
@@ -431,6 +439,7 @@ const FIGHTS = [
 {division:"Women's Strawweight", date:"2024-04-13", event:"UFC 300", winner:"Zhang Weili", loser:"Yan Xiaonan", type:"defense"},
 {division:"Women's Strawweight", date:"2025-02-09", event:"UFC 312", winner:"Zhang Weili", loser:"Tatiana Suarez", type:"defense"},
 {division:"Women's Strawweight", date:"2025-10-25", event:"UFC 321", winner:"Mackenzie Dern", loser:"Virna Jandiroba", type:"change"},
+{division:"Women's Strawweight", date:"2026-08-15", event:"UFC 330", winner:"Mackenzie Dern", loser:"Gillian Robertson", type:"defense"},
 
 // ===== WOMEN'S FEATHERWEIGHT (discontinued) =====
 {division:"Women's Featherweight", date:"2017-02-11", event:"UFC 208", winner:"Germaine de Randamie", loser:"Holly Holm", type:"change"},
@@ -473,3 +482,22 @@ const DIVISION_COLORS = {
 };
 
 const DIVISION_ORDER = ["Heavyweight","Light Heavyweight","Middleweight","Welterweight","Lightweight","Featherweight","Bantamweight","Flyweight","Women's Bantamweight","Women's Flyweight","Women's Strawweight","Women's Featherweight","BMF","Openweight"];
+
+// ---------- Longest UFC winning streaks (all fights, not just title fights) ----------
+// This is a separate, hand-researched dataset (not derived from FIGHTS) because a true "win streak"
+// spans every UFC bout a fighter had, including non-title fights the graph above doesn't track.
+// status: "ended" = streak was snapped by a loss/draw, "retired" = fighter retired/stepped away while
+// still on the streak (never lost it), "active" = ongoing as of this writing, "overturned" = the
+// streak's next fight was originally a win but was retroactively ruled a no-contest (Jon Jones's
+// 2017 win over Daniel Cormier, overturned after a failed drug test), freezing the streak at that count.
+const WIN_STREAKS = [
+  { name: "Islam Makhachev", streak: 17, division: "Lightweight / Welterweight", start: { date: "2016-09-17", opponent: "Chris Wade" }, end: { date: "2026-08-15", opponent: "Ian Machado Garry" }, status: "active" },
+  { name: "Anderson Silva", streak: 16, division: "Middleweight", start: { date: "2006-06-28", opponent: "Chris Leben" }, end: { date: "2013-07-06", opponent: "Chris Weidman" }, status: "ended" },
+  { name: "Kamaru Usman", streak: 15, division: "Welterweight", start: { date: "2015-12-19", opponent: "Leon Edwards" }, end: { date: "2022-08-20", opponent: "Leon Edwards" }, status: "ended" },
+  { name: "Merab Dvalishvili", streak: 14, division: "Bantamweight", start: { date: "2024-09-14", opponent: "Sean O'Malley" }, end: { date: "2025-12-06", opponent: "Petr Yan" }, status: "ended" },
+  { name: "Khabib Nurmagomedov", streak: 13, division: "Lightweight", start: { date: "2012-01-20", opponent: "Kamal Shalorus" }, end: { date: "2020-10-24", opponent: "Justin Gaethje" }, status: "retired" },
+  { name: "Jon Jones", streak: 13, division: "Light Heavyweight", start: { date: "2010-03-21", opponent: "Brandon Vera" }, end: { date: "2017-07-29", opponent: "Daniel Cormier" }, status: "overturned" },
+  { name: "Georges St-Pierre", streak: 13, division: "Welterweight", start: { date: "2007-08-25", opponent: "Josh Koscheck" }, end: { date: "2013-11-16", opponent: "Johny Hendricks" }, status: "retired" },
+  { name: "Demetrious Johnson", streak: 13, division: "Flyweight", start: { date: "2012-06-08", opponent: "Ian McCall" }, end: { date: "2018-08-04", opponent: "Henry Cejudo" }, status: "ended" },
+  { name: "Tony Ferguson", streak: 12, division: "Lightweight", start: { date: "2013-10-19", opponent: "Mike Rio" }, end: { date: "2020-05-09", opponent: "Justin Gaethje" }, status: "ended" },
+];

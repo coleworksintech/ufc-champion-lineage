@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>UFC Championship Lineage Map</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="ufc_title_lineage_data.js"></script>
+<style>
+  :root {
+    --bg: #0b0d10;
+    --panel: #15181d;
+    --panel-border: #262a31;
+    --text: #e8e9eb;
+    --text-dim: #9aa0a8;
+    --accent: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; background:var(--bg); color:var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; height:100%; overflow:hidden; }
+  #app { display:flex; height:100vh; width:100vw; }
+  #sidebar {
+    width: 300px; flex-shrink:0; background:var(--panel); border-right:1px solid var(--panel-border);
+    padding: 16px; overflow-y:auto; display:flex; flex-direction:column; gap:14px;
+  }
+  #sidebar h1 { font-size:16px; margin:0 0 2px 0; letter-spacing:0.2px; }
+  #sidebar .sub { font-size:11px; color:var(--text-dim); margin-bottom:6px; line-height:1.4; }
+  input[type="text"] {
+    width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--panel-border);
+    background:#0f1114; color:var(--text); font-size:13px; outline:none;
+  }
+  input[type="text"]:focus { border-color: var(--accent); }
+  #suggestions { max-height:140px; overflow-y:auto; }
+  .suggestion { padding:6px 8px; font-size:12.5px; border-radius:6px; cursor:pointer; color:var(--text-dim); }
+  .suggestion:hover { background:#1d2127; color:var(--text); }
+  .legend-item { display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer; padding:3px 4px; border-radius:6px; user-select:none; }
+  .legend-item:hover { background:#1d2127; }
+  .legend-item.off { opacity:0.35; }
+  .swatch { width:11px; height:11px; border-radius:50%; flex-shrink:0; }
+  .legend-line { display:flex; align-items:center; gap:8px; font-size:11px; color:var(--text-dim); }
+  .line-sample { width:22px; height:0; border-top-width:2px; flex-shrink:0; }
+  #detail { border-top:1px solid var(--panel-border); padding-top:12px; font-size:12.5px; }
+  #detail h2 { font-size:14px; margin:0 0 8px 0; }
+  #detail .empty { color:var(--text-dim); font-size:12px; line-height:1.5; }
+  .fight-row { padding:6px 0; border-bottom:1px solid #1b1e23; line-height:1.45; }
+  .fight-row:last-child { border-bottom:none; }
+  .fight-row .ev { color:var(--text-dim); font-size:11px; }
+  .badge { display:inline-block; font-size:10px; padding:1px 6px; border-radius:10px; margin-right:6px; }
+  #canvas-wrap { flex:1; position:relative; }
+  svg { width:100%; height:100%; display:block; cursor: grab; }
+  svg:active { cursor: grabbing; }
+  .link { stroke-opacity: 0.55; fill:none; }
+  .link.dim { stroke-opacity: 0.06; }
+  .node circle { stroke: #0b0d10; stroke-width:1.5px; cursor:pointer; }
+  .node text { fill: var(--text); font-size: 10px; pointer-events:none; paint-order: stroke; stroke: #0b0d10; stroke-width: 3px; }
+  .node.dim circle { opacity:0.15; }
+  .node.dim text { opacity:0.12; }
+  #tooltip {
+    position:absolute; pointer-events:none; background:#1a1d22; border:1px solid var(--panel-border);
+    padding:6px 9px; border-radius:6px; font-size:11.5px; display:none; max-width:240px; z-index:10;
+  }
+  #topbar {
+    position:absolute; top:12px; right:16px; font-size:11px; color:var(--text-dim); text-align:right;
+  }
+  #reset {
+    position:absolute; bottom:14px; right:16px; background:var(--panel); border:1px solid var(--panel-border);
+    color:var(--text); font-size:12px; padding:7px 12px; border-radius:8px; cursor:pointer;
+  }
+  #reset:hover { border-color:var(--accent); }
+  #rankings-btn, #streaks-btn {
+    width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--panel-border);
+    background:#0f1114; color:var(--text); font-size:12.5px; cursor:pointer; text-align:left;
+  }
+  #rankings-btn:hover, #streaks-btn:hover { border-color:var(--accent); }
+  #rankings-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:100;
+  }
+  #rankings-overlay.open { display:flex; }
+  #rankings-modal {
+    background:var(--panel); border:1px solid var(--panel-border); border-radius:12px;
+    width:min(560px, 90vw); max-height:82vh; display:flex; flex-direction:column; overflow:hidden;
+  }
+  #rankings-modal header {
+    padding:16px 18px 10px 18px; border-bottom:1px solid var(--panel-border); display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+  }
+  #rankings-modal header h2 { font-size:15px; margin:0 0 4px 0; }
+  #rankings-modal header .sub { font-size:11.5px; color:var(--text-dim); line-height:1.4; }
+  #rankings-close {
+    background:none; border:none; color:var(--text-dim); font-size:18px; cursor:pointer; line-height:1; padding:2px 4px;
+  }
+  #rankings-close:hover { color:var(--text); }
+  #rankings-list { overflow-y:auto; padding:6px 8px; }
+  .rank-row {
+    display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:8px; cursor:pointer; font-size:12.5px;
+  }
+  .rank-row:hover { background:#1d2127; }
+  .rank-num { width:22px; flex-shrink:0; color:var(--text-dim); font-variant-numeric:tabular-nums; text-align:right; }
+  .rank-name { flex:1; }
+  .rank-divs { font-size:10.5px; color:var(--text-dim); }
+  .rank-count { font-weight:600; font-variant-numeric:tabular-nums; min-width:20px; text-align:right; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="sidebar">
+    <div>
+      <h1>UFC Championship Lineage</h1>
+      <div class="sub">Every UFC title change, defense, interim fight and title draw, chained across divisions. Each dot is a fighter; each line is a title fight. Drag nodes, scroll to zoom, click a fighter for their title-fight history.</div>
+      <input type="text" id="search" placeholder="Search a fighter…" autocomplete="off">
+      <div id="suggestions"></div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <button id="rankings-btn" data-mode="defenses">View: most title defenses ranking →</button>
+      <button id="streaks-btn" data-mode="streaks">View: longest winning streaks →</button>
+    </div>
+    <div>
+      <div class="sub" style="margin-bottom:8px;">Divisions (click to toggle)</div>
+      <div id="legend"></div>
+    </div>
+    <div>
+      <div class="sub" style="margin-bottom:6px;">Fight type</div>
+      <div class="legend-line"><span class="line-sample" style="border-top-style:solid; border-top-color:#e8e9eb;"></span> Title change</div>
+      <div class="legend-line"><span class="line-sample" style="border-top-style:dashed; border-top-color:#e8e9eb;"></span> Successful defense</div>
+      <div class="legend-line"><span class="line-sample" style="border-top-style:dotted; border-top-color:#e8e9eb;"></span> Interim title</div>
+      <div class="legend-line"><span class="line-sample" style="border-top-style:solid; border-top-color:#555;"></span> Draw / promoted</div>
+    </div>
+    <div id="detail">
+      <div class="empty">Click any fighter to see their title-fight history and see who they connect to across divisions.</div>
+    </div>
+  </div>
+  <div id="canvas-wrap">
+    <div id="topbar"></div>
+    <svg id="canvas"></svg>
+    <div id="tooltip"></div>
+    <button id="reset">Reset view</button>
+  </div>
+</div>
+
+<div id="rankings-overlay">
+  <div id="rankings-modal">
+    <header>
+      <div>
+        <h2 id="rankings-title">Most title defenses</h2>
+        <div class="sub" id="rankings-sub">Ranked by successful title defenses only — title-winning fights, interim wins and draws don't count. Click a fighter to find them on the map.</div>
+      </div>
+      <button id="rankings-close" aria-label="Close">✕</button>
+    </header>
+    <div id="rankings-list"></div>
+  </div>
+</div>
+
+<script>
+// ---------- Build graph from FIGHTS ----------
+const nodesMap = new Map();
+function getNode(name, division) {
+  if (!nodesMap.has(name)) {
+    nodesMap.set(name, { id: name, divisions: new Set(), fights: [] });
+  }
+  const n = nodesMap.get(name);
+  if (division) n.divisions.add(division);
+  return n;
+}
+
+const links = [];
+FIGHTS.forEach(f => {
+  const w = getNode(f.winner, f.division);
+  w.fights.push(f);
+  if (f.loser && f.loser !== "—") {
+    const l = getNode(f.loser, f.division);
+    l.fights.push(f);
+    links.push({ source: f.winner, target: f.loser, division: f.division, type: f.type, date: f.date, event: f.event, winner: f.winner, loser: f.loser });
+  }
+});
+
+const nodes = Array.from(nodesMap.values()).map(n => {
+  // primary division = the one they show up in most / first
+  const divs = Array.from(n.divisions);
+  n.primary = divs[0];
+  n.divCount = divs.length;
+  n.fightCount = n.fights.length;
+  return n;
+});
+
+const nodeById = new Map(nodes.map(n => [n.id, n]));
+
+// ---------- Setup SVG ----------
+const svg = d3.select("#canvas");
+const wrap = document.getElementById("canvas-wrap");
+let width = wrap.clientWidth, height = wrap.clientHeight;
+
+const g = svg.append("g");
+const linkGroup = g.append("g").attr("class", "links");
+const nodeGroup = g.append("g").attr("class", "nodes");
+
+const zoom = d3.zoom().scaleExtent([0.1, 6]).on("zoom", (event) => {
+  g.attr("transform", event.transform);
+});
+svg.call(zoom);
+
+function typeToDash(type) {
+  if (type === "change") return null;
+  if (type === "defense") return "5,4";
+  if (type === "interim") return "1.5,3";
+  return "3,3"; // draw / promoted
+}
+function typeToWidth(type) {
+  return type === "change" ? 2.2 : 1.3;
+}
+function typeToColor(type, division) {
+  if (type === "draw" || type === "promoted") return "#666";
+  return DIVISION_COLORS[division] || "#999";
+}
+
+const linkSel = linkGroup.selectAll("path")
+  .data(links)
+  .join("path")
+  .attr("class", "link")
+  .attr("stroke", d => typeToColor(d.type, d.division))
+  .attr("stroke-width", d => typeToWidth(d.type))
+  .attr("stroke-dasharray", d => typeToDash(d.type))
+  .on("mouseover", (event, d) => showTooltip(event, `<b>${d.winner}</b> def. <b>${d.loser}</b><br><span style="color:#9aa0a8">${d.event} — ${d.date}</span><br>${d.division} · ${d.type}`))
+  .on("mousemove", (event) => moveTooltip(event))
+  .on("mouseout", hideTooltip);
+
+const radiusScale = d3.scaleSqrt().domain(d3.extent(nodes, n => n.fightCount)).range([4, 16]);
+
+const nodeSel = nodeGroup.selectAll("g")
+  .data(nodes)
+  .join("g")
+  .attr("class", "node")
+  .call(d3.drag()
+    .on("start", dragstarted)
+    .on("drag", dragged)
+    .on("end", dragended));
+
+nodeSel.append("circle")
+  .attr("r", d => radiusScale(d.fightCount))
+  .attr("fill", d => DIVISION_COLORS[d.primary] || "#999")
+  .on("click", (event, d) => selectFighter(d.id))
+  .on("mouseover", (event, d) => showTooltip(event, `<b>${d.id}</b><br><span style="color:#9aa0a8">${Array.from(d.divisions).join(", ")}</span><br>${d.fightCount} title fight${d.fightCount>1?'s':''}`))
+  .on("mousemove", (event) => moveTooltip(event))
+  .on("mouseout", hideTooltip);
+
+nodeSel.append("text")
+  .attr("dy", d => -(radiusScale(d.fightCount) + 4))
+  .attr("text-anchor", "middle")
+  .text(d => d.id);
+
+// ---------- Force simulation ----------
+const simulation = d3.forceSimulation(nodes)
+  .force("link", d3.forceLink(links).id(d => d.id).distance(70).strength(0.35))
+  .force("charge", d3.forceManyBody().strength(-90))
+  .force("center", d3.forceCenter(width/2, height/2))
+  .force("collide", d3.forceCollide(d => radiusScale(d.fightCount) + 10))
+  .on("tick", ticked);
+
+function ticked() {
+  linkSel.attr("d", d => {
+    const s = nodeById.get(d.source.id || d.source);
+    const t = nodeById.get(d.target.id || d.target);
+    return `M${s.x},${s.y}L${t.x},${t.y}`;
+  });
+  nodeSel.attr("transform", d => `translate(${d.x},${d.y})`);
+}
+
+function dragstarted(event, d) {
+  if (!event.active) simulation.alphaTarget(0.2).restart();
+  d.fx = d.x; d.fy = d.y;
+}
+function dragged(event, d) { d.fx = event.x; d.fy = event.y; }
+function dragended(event, d) {
+  if (!event.active) simulation.alphaTarget(0);
+  d.fx = null; d.fy = null;
+}
+
+// ---------- Tooltip ----------
+const tooltip = document.getElementById("tooltip");
+function showTooltip(event, html) {
+  tooltip.innerHTML = html;
+  tooltip.style.display = "block";
+  moveTooltip(event);
+}
+function moveTooltip(event) {
+  const rect = wrap.getBoundingClientRect();
+  tooltip.style.left = (event.clientX - rect.left + 14) + "px";
+  tooltip.style.top = (event.clientY - rect.top + 10) + "px";
+}
+function hideTooltip() { tooltip.style.display = "none"; }
+
+// ---------- Legend ----------
+const legend = document.getElementById("legend");
+const activeDivisions = new Set(DIVISION_ORDER);
+DIVISION_ORDER.forEach(div => {
+  const count = FIGHTS.filter(f => f.division === div).length;
+  const item = document.createElement("div");
+  item.className = "legend-item";
+  item.innerHTML = `<span class="swatch" style="background:${DIVISION_COLORS[div]}"></span><span>${div} <span style="color:#666">(${count})</span></span>`;
+  item.addEventListener("click", () => {
+    if (activeDivisions.has(div)) { activeDivisions.delete(div); item.classList.add("off"); }
+    else { activeDivisions.add(div); item.classList.remove("off"); }
+    applyDivisionFilter();
+  });
+  legend.appendChild(item);
+});
+
+function applyDivisionFilter() {
+  linkSel.style("display", d => activeDivisions.has(d.division) ? null : "none");
+  nodeSel.style("display", d => {
+    const anyActive = Array.from(d.divisions).some(dv => activeDivisions.has(dv));
+    return anyActive ? null : "none";
+  });
+}
+
+// ---------- Search ----------
+const searchInput = document.getElementById("search");
+const suggestionsBox = document.getElementById("suggestions");
+searchInput.addEventListener("input", () => {
+  const q = searchInput.value.trim().toLowerCase();
+  suggestionsBox.innerHTML = "";
+  if (!q) return;
+  const matches = nodes.filter(n => n.id.toLowerCase().includes(q)).sort((a,b) => b.fightCount - a.fightCount).slice(0, 12);
+  matches.forEach(m => {
+    const div = document.createElement("div");
+    div.className = "suggestion";
+    div.textContent = `${m.id} (${m.fightCount})`;
+    div.addEventListener("click", () => { selectFighter(m.id); searchInput.value = m.id; suggestionsBox.innerHTML = ""; });
+    suggestionsBox.appendChild(div);
+  });
+});
+
+// ---------- Selection / detail panel ----------
+let selected = null;
+function selectFighter(name) {
+  selected = name;
+  const node = nodeById.get(name);
+  if (!node) return;
+
+  const connected = new Set([name]);
+  links.forEach(l => {
+    const s = l.source.id || l.source, t = l.target.id || l.target;
+    if (s === name) connected.add(t);
+    if (t === name) connected.add(s);
+  });
+
+  nodeSel.classed("dim", d => !connected.has(d.id));
+  linkSel.classed("dim", l => {
+    const s = l.source.id || l.source, t = l.target.id || l.target;
+    return s !== name && t !== name;
+  });
+
+  const detail = document.getElementById("detail");
+  const sortedFights = node.fights.slice().sort((a,b) => a.date.localeCompare(b.date));
+  const rows = sortedFights.map(f => {
+    const won = f.winner === name;
+    const opponent = won ? f.loser : f.winner;
+    const verb = f.type === "draw" ? "drew with" : (f.type === "promoted" ? "promoted over" : (won ? "def." : "lost to"));
+    const color = DIVISION_COLORS[f.division] || "#999";
+    return `<div class="fight-row">
+      <span class="badge" style="background:${color}22; color:${color}">${f.division}</span>${verb} <b>${opponent === "—" ? "(vacant)" : opponent}</b>
+      <div class="ev">${f.event} — ${f.date} · ${f.type}</div>
+    </div>`;
+  }).join("");
+
+  detail.innerHTML = `<h2>${name}</h2>
+    <div class="sub" style="margin-bottom:8px;">${Array.from(node.divisions).join(", ")} · ${node.fightCount} title fight${node.fightCount>1?'s':''}</div>
+    ${rows}`;
+}
+
+svg.on("click", (event) => {
+  if (event.target.tagName === "svg" || event.target === g.node()) {
+    selected = null;
+    nodeSel.classed("dim", false);
+    linkSel.classed("dim", false);
+    document.getElementById("detail").innerHTML = `<div class="empty">Click any fighter to see their title-fight history and see who they connect to across divisions.</div>`;
+  }
+});
+
+// ---------- Reset / resize ----------
+document.getElementById("reset").addEventListener("click", () => {
+  svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity);
+});
+
+window.addEventListener("resize", () => {
+  width = wrap.clientWidth; height = wrap.clientHeight;
+  simulation.force("center", d3.forceCenter(width/2, height/2));
+});
+
+document.getElementById("topbar").textContent = `${nodes.length} fighters · ${links.length} title fights · ${DIVISION_ORDER.length} divisions`;
+
+// ---------- Rankings (title defenses + winning streaks) ----------
+function buildDefenseRankings() {
+  const counts = new Map(); // name -> { total, byDivision: Map }
+  FIGHTS.forEach(f => {
+    if (f.type !== "defense") return;
+    if (!counts.has(f.winner)) counts.set(f.winner, { total: 0, byDivision: new Map() });
+    const c = counts.get(f.winner);
+    c.total += 1;
+    c.byDivision.set(f.division, (c.byDivision.get(f.division) || 0) + 1);
+  });
+  return Array.from(counts.entries())
+    .map(([name, c]) => ({ name, total: c.total, byDivision: c.byDivision }))
+    .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+}
+
+function formatDateShort(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+}
+
+function renderDefenseRankings() {
+  document.getElementById("rankings-title").textContent = "Most title defenses";
+  document.getElementById("rankings-sub").textContent = "Ranked by successful title defenses only — title-winning fights, interim wins and draws don't count. Click a fighter to find them on the map.";
+  const ranking = buildDefenseRankings();
+  const list = document.getElementById("rankings-list");
+  list.innerHTML = ranking.map((r, i) => {
+    const divs = Array.from(r.byDivision.entries())
+      .map(([div, n]) => `${div}${r.byDivision.size > 1 ? ` (${n})` : ""}`)
+      .join(", ");
+    return `<div class="rank-row" data-name="${r.name.replace(/"/g, '&quot;')}">
+      <span class="rank-num">${i + 1}</span>
+      <span class="rank-name">${r.name}<div class="rank-divs">${divs}</div></span>
+      <span class="rank-count">${r.total}</span>
+    </div>`;
+  }).join("");
+  wireRankRows();
+}
+
+function renderStreakRankings() {
+  document.getElementById("rankings-title").textContent = "Longest winning streaks";
+  document.getElementById("rankings-sub").textContent = "Every UFC fight counts here, not just title bouts — this list is hand-researched separately from the map above. Click a fighter to find them on the map.";
+  const list = document.getElementById("rankings-list");
+  list.innerHTML = WIN_STREAKS.map((s, i) => {
+    const startTxt = `${s.start.opponent} · ${formatDateShort(s.start.date)}`;
+    let endTxt;
+    if (s.status === "active") endTxt = `active — last: ${s.end.opponent}, ${formatDateShort(s.end.date)}`;
+    else if (s.status === "retired") endTxt = `retired undefeated after ${s.end.opponent}, ${formatDateShort(s.end.date)}`;
+    else if (s.status === "overturned") endTxt = `frozen — win over ${s.end.opponent} (${formatDateShort(s.end.date)}) later ruled a no-contest`;
+    else endTxt = `snapped by ${s.end.opponent}, ${formatDateShort(s.end.date)}`;
+    return `<div class="rank-row" data-name="${s.name.replace(/"/g, '&quot;')}">
+      <span class="rank-num">${i + 1}</span>
+      <span class="rank-name">${s.name}<div class="rank-divs">${s.division} · from ${startTxt} · ${endTxt}</div></span>
+      <span class="rank-count">${s.streak}</span>
+    </div>`;
+  }).join("");
+  wireRankRows();
+}
+
+function wireRankRows() {
+  document.querySelectorAll("#rankings-list .rank-row").forEach(row => {
+    row.addEventListener("click", () => {
+      if (!nodeById.has(row.dataset.name)) return;
+      selectFighter(row.dataset.name);
+      searchInput.value = row.dataset.name;
+      suggestionsBox.innerHTML = "";
+      closeRankings();
+    });
+  });
+}
+
+const rankingsOverlay = document.getElementById("rankings-overlay");
+function openRankings(mode) {
+  if (mode === "streaks") renderStreakRankings();
+  else renderDefenseRankings();
+  rankingsOverlay.classList.add("open");
+}
+function closeRankings() { rankingsOverlay.classList.remove("open"); }
+
+document.getElementById("rankings-btn").addEventListener("click", () => openRankings("defenses"));
+document.getElementById("streaks-btn").addEventListener("click", () => openRankings("streaks"));
+document.getElementById("rankings-close").addEventListener("click", closeRankings);
+rankingsOverlay.addEventListener("click", (event) => {
+  if (event.target === rankingsOverlay) closeRankings();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeRankings();
+});
+
+// Initial gentle zoom-out so the whole graph is visible-ish
+svg.call(zoom.transform, d3.zoomIdentity.translate(width*0.15, height*0.1).scale(0.8));
+</script>
+</body>
+</html>
