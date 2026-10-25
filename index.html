@@ -653,7 +653,7 @@ function selectFighter(name) {
   applySelectionStyles(name, connected);
 
   const detail = document.getElementById("detail");
-  const sortedFights = node.fights.slice().sort((a,b) => a.date.localeCompare(b.date));
+  const sortedFights = node.fights.slice().sort((a,b) => b.date.localeCompare(a.date)); // most recent first
   const rows = sortedFights.map(f => {
     const won = f.winner === name;
     const opponent = won ? f.loser : f.winner;
