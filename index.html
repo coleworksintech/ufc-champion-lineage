@@ -707,7 +707,8 @@ function selectFighter(name) {
   setMobilePill(name);
 
   if (IS_MOBILE()) {
-    setSheetState(fighterCard.classList.contains("half") || fighterCard.classList.contains("full") ? currentSheetState() : "peek");
+    // Open at half height (the same view you get after the first swipe up); keep the size if already expanded
+    setSheetState(fighterCard.classList.contains("full") ? "full" : "half");
     document.body.classList.add("sheet-open");
     wireSheetSwipe();
   }
