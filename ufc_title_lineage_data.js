@@ -23,6 +23,11 @@
 // vs. Diaz at UFC 244 was already present in this file). Also added WIN_STREAKS below for a "longest
 // winning streaks" ranking — note this tracks ALL UFC fights per fighter (not just title fights), so
 // unlike FIGHTS it's hand-researched rather than derived, since the graph itself only models title bouts.
+//
+// v6 (2026-10-25): added title fights from UFC 331–333 — Joshua Van def. Alexandre Pantoja (Flyweight
+// defense, UFC 331, Sep 19), Natália Silva def. Wang Cong (vacant Women's Flyweight title, UFC 332,
+// Oct 3 — Shevchenko vacated), Alexander Volkanovski def. Movsar Evloev (Featherweight defense, UFC 333,
+// Oct 24, R2 TKO) and Petr Yan def. Merab Dvalishvili (Bantamweight defense, UFC 333, UD).
 
 const FIGHTS = [
 // ===== HEAVYWEIGHT =====
@@ -314,6 +319,7 @@ const FIGHTS = [
 {division:"Featherweight", date:"2024-10-26", event:"UFC 308", winner:"Ilia Topuria", loser:"Max Holloway", type:"defense"},
 {division:"Featherweight", date:"2025-04-12", event:"UFC 314", winner:"Alexander Volkanovski", loser:"Diego Lopes", type:"change"},
 {division:"Featherweight", date:"2026-02-01", event:"UFC 325", winner:"Alexander Volkanovski", loser:"Diego Lopes", type:"defense"},
+{division:"Featherweight", date:"2026-10-24", event:"UFC 333", winner:"Alexander Volkanovski", loser:"Movsar Evloev", type:"defense"},
 
 // ===== BANTAMWEIGHT =====
 {division:"Bantamweight", date:"2010-12-16", event:"WEC 53", winner:"Dominick Cruz", loser:"Scott Jorgensen", type:"change"},
@@ -347,6 +353,7 @@ const FIGHTS = [
 {division:"Bantamweight", date:"2025-06-07", event:"UFC 316", winner:"Merab Dvalishvili", loser:"Sean O'Malley", type:"defense"},
 {division:"Bantamweight", date:"2025-10-04", event:"UFC 320", winner:"Merab Dvalishvili", loser:"Cory Sandhagen", type:"defense"},
 {division:"Bantamweight", date:"2025-12-06", event:"UFC 323", winner:"Petr Yan", loser:"Merab Dvalishvili", type:"change"},
+{division:"Bantamweight", date:"2026-10-24", event:"UFC 333", winner:"Petr Yan", loser:"Merab Dvalishvili", type:"defense"},
 
 // ===== FLYWEIGHT =====
 {division:"Flyweight", date:"2012-09-22", event:"UFC 152", winner:"Demetrious Johnson", loser:"Joseph Benavidez", type:"change"},
@@ -377,6 +384,7 @@ const FIGHTS = [
 {division:"Flyweight", date:"2025-06-28", event:"UFC 317", winner:"Alexandre Pantoja", loser:"Kai Kara-France", type:"defense"},
 {division:"Flyweight", date:"2025-12-06", event:"UFC 323", winner:"Joshua Van", loser:"Alexandre Pantoja", type:"change"},
 {division:"Flyweight", date:"2026-05-09", event:"UFC 328", winner:"Joshua Van", loser:"Tatsuro Taira", type:"defense"},
+{division:"Flyweight", date:"2026-09-19", event:"UFC 331", winner:"Joshua Van", loser:"Alexandre Pantoja", type:"defense"},
 
 // ===== WOMEN'S BANTAMWEIGHT =====
 {division:"Women's Bantamweight", date:"2012-12-06", event:"UFC on Fox: Henderson vs. Diaz", winner:"Ronda Rousey", loser:"—", type:"promoted"},
@@ -417,6 +425,7 @@ const FIGHTS = [
 {division:"Women's Flyweight", date:"2024-09-14", event:"UFC 306", winner:"Valentina Shevchenko", loser:"Alexa Grasso", type:"change"},
 {division:"Women's Flyweight", date:"2025-05-10", event:"UFC 315", winner:"Valentina Shevchenko", loser:"Manon Fiorot", type:"defense"},
 {division:"Women's Flyweight", date:"2025-11-15", event:"UFC 322", winner:"Valentina Shevchenko", loser:"Zhang Weili", type:"defense"},
+{division:"Women's Flyweight", date:"2026-10-03", event:"UFC 332", winner:"Natália Silva", loser:"Wang Cong", type:"change"},
 
 // ===== WOMEN'S STRAWWEIGHT =====
 {division:"Women's Strawweight", date:"2014-12-12", event:"TUF 20 Finale", winner:"Carla Esparza", loser:"Rose Namajunas", type:"change"},
