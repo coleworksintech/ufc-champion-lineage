@@ -24,6 +24,7 @@
 // winning streaks" ranking — note this tracks ALL UFC fights per fighter (not just title fights), so
 // unlike FIGHTS it's hand-researched rather than derived, since the graph itself only models title bouts.
 //
+// v7 (2026-10-25): added P4P (official UFC pound-for-pound poll) at the bottom of this file.
 // v6 (2026-10-25): added title fights from UFC 331–333 — Joshua Van def. Alexandre Pantoja (Flyweight
 // defense, UFC 331, Sep 19), Natália Silva def. Wang Cong (vacant Women's Flyweight title, UFC 332,
 // Oct 3 — Shevchenko vacated), Alexander Volkanovski def. Movsar Evloev (Featherweight defense, UFC 333,
@@ -510,3 +511,43 @@ const WIN_STREAKS = [
   { name: "Demetrious Johnson", streak: 13, division: "Flyweight", start: { date: "2012-06-08", opponent: "Ian McCall" }, end: { date: "2018-08-04", opponent: "Henry Cejudo" }, status: "ended" },
   { name: "Tony Ferguson", streak: 12, division: "Lightweight", start: { date: "2013-10-19", opponent: "Mike Rio" }, end: { date: "2020-05-09", opponent: "Justin Gaethje" }, status: "ended" },
 ];
+
+// ===== POUND-FOR-POUND (official UFC poll, ufc.com/rankings, last updated Oct 17, 2026 — before UFC 333) =====
+// Added in v7. rank is the displayed rank (ties repeat the number); move: "+1"/"-1" = change since prior poll, "NR" = newly ranked.
+const P4P = {
+  updated: "Oct 17, 2026",
+  men: [
+    { rank: 1,  name: "Islam Makhachev",       division: "Welterweight" },
+    { rank: 2,  name: "Alexander Volkanovski", division: "Featherweight" },
+    { rank: 3,  name: "Justin Gaethje",        division: "Lightweight" },
+    { rank: 4,  name: "Petr Yan",              division: "Bantamweight" },
+    { rank: 5,  name: "Ilia Topuria",          division: "Lightweight" },
+    { rank: 6,  name: "Joshua Van",            division: "Flyweight" },
+    { rank: 7,  name: "Tom Aspinall",          division: "Heavyweight", move: "+1", tie: true },
+    { rank: 7,  name: "Sean Strickland",       division: "Middleweight", tie: true },
+    { rank: 9,  name: "Merab Dvalishvili",     division: "Bantamweight" },
+    { rank: 10, name: "Alex Pereira",          division: "Light Heavyweight" },
+    { rank: 11, name: "Ciryl Gane",            division: "Heavyweight" },
+    { rank: 12, name: "Khamzat Chimaev",       division: "Middleweight" },
+    { rank: 13, name: "Arman Tsarukyan",       division: "Lightweight" },
+    { rank: 14, name: "Alexandre Pantoja",     division: "Flyweight" },
+    { rank: 15, name: "Carlos Ulberg",         division: "Light Heavyweight" }
+  ],
+  women: [
+    { rank: 1,  name: "Valentina Shevchenko",  division: "Women's Flyweight" },
+    { rank: 2,  name: "Kayla Harrison",        division: "Women's Bantamweight" },
+    { rank: 3,  name: "Zhang Weili",           division: "Women's Strawweight" },
+    { rank: 4,  name: "Natália Silva",         division: "Women's Flyweight" },
+    { rank: 5,  name: "Mackenzie Dern",        division: "Women's Strawweight" },
+    { rank: 6,  name: "Alexa Grasso",          division: "Women's Flyweight" },
+    { rank: 7,  name: "Manon Fiorot",          division: "Women's Flyweight" },
+    { rank: 8,  name: "Tatiana Suarez",        division: "Women's Strawweight", move: "+1" },
+    { rank: 9,  name: "Erin Blanchfield",      division: "Women's Flyweight", move: "-1" },
+    { rank: 10, name: "Julianna Peña",         division: "Women's Bantamweight" },
+    { rank: 11, name: "Virna Jandiroba",       division: "Women's Strawweight" },
+    { rank: 12, name: "Jasmine Jasudavicius",  division: "Women's Flyweight", move: "NR" },
+    { rank: 13, name: "Rose Namajunas",        division: "Women's Flyweight", move: "-1" },
+    { rank: 14, name: "Raquel Pennington",     division: "Women's Bantamweight", move: "-1" },
+    { rank: 15, name: "Denise Gomes",          division: "Women's Strawweight", move: "-1" }
+  ]
+};

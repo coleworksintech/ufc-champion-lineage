@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>UFC Championship Lineage Map</title>
 <link rel="icon" type="image/png" href="favicon.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
@@ -25,10 +26,15 @@
   #sidebar h1 { font-size:16px; margin:0 0 2px 0; letter-spacing:0.2px; }
   #sidebar .sub { font-size:11px; color:var(--text-dim); margin-bottom:6px; line-height:1.4; }
   input[type="text"] {
-    width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--panel-border);
-    background:#0f1114; color:var(--text); font-size:13px; outline:none;
+    width:100%; padding:13px 14px 13px 42px; border-radius:10px; border:1.5px solid #4a2a2d;
+    background:#0f1114 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23ff6b6b' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='7'/><line x1='21' y1='21' x2='16.5' y2='16.5'/></svg>") no-repeat 14px center;
+    color:var(--text); font-size:15px; outline:none;
+    box-shadow:0 0 0 3px rgba(255,107,107,0.10); transition:border-color .15s, box-shadow .15s;
   }
-  input[type="text"]:focus { border-color: var(--accent); }
+  input[type="text"]::placeholder { color:#7d848d; }
+  input[type="text"]:focus { border-color: var(--accent); box-shadow:0 0 0 4px rgba(255,107,107,0.22); }
+  #show-all { background:none; border:none; color:var(--accent); font-size:11px; cursor:pointer; padding:0 0 0 6px; display:none; }
+  #show-all:hover { text-decoration:underline; }
   #suggestions { max-height:140px; overflow-y:auto; }
   .suggestion { padding:6px 8px; font-size:12.5px; border-radius:6px; cursor:pointer; color:var(--text-dim); }
   .suggestion:hover { background:#1d2127; color:var(--text); }
@@ -46,6 +52,18 @@
   .fight-row .ev { color:var(--text-dim); font-size:11px; }
   .badge { display:inline-block; font-size:10px; padding:1px 6px; border-radius:10px; margin-right:6px; }
   #canvas-wrap { flex:1; position:relative; }
+  #fighter-card {
+    position:absolute; top:44px; right:16px; width:clamp(230px, 42%, 320px); max-height:calc(100% - 110px);
+    font-size:12.5px; line-height:1.45; overflow-y:auto; overflow-x:hidden; background:rgba(21,24,29,0.96); border:1px solid var(--panel-border); border-radius:12px;
+    padding:14px 14px 6px; box-shadow:0 10px 30px rgba(0,0,0,0.5); display:none; z-index:20;
+  }
+  #fighter-card.open { display:block; }
+  .fc-head { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .fc-name { font-size:15px; font-weight:600; }
+  .fc-sub { font-size:11px; color:var(--text-dim); }
+  .fc-record { font-size:12.5px; margin:8px 0 6px; padding-bottom:8px; border-bottom:1px solid var(--panel-border); }
+  #fc-close { background:none; border:none; color:var(--text-dim); font-size:16px; cursor:pointer; line-height:1; padding:2px 4px; }
+  #fc-close:hover { color:var(--text); }
   svg { width:100%; height:100%; display:block; cursor: grab; }
   svg:active { cursor: grabbing; }
   .link { stroke-opacity: 0.55; fill:none; }
@@ -66,11 +84,148 @@
     color:var(--text); font-size:12px; padding:7px 12px; border-radius:8px; cursor:pointer;
   }
   #reset:hover { border-color:var(--accent); }
-  #rankings-btn, #streaks-btn {
-    width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--panel-border);
-    background:#0f1114; color:var(--text); font-size:12.5px; cursor:pointer; text-align:left;
+  #lists-dd { position:relative; }
+  #lists-btn {
+    width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--panel-border);
+    background:#0f1114; color:var(--text); font-size:13px; cursor:pointer; text-align:left;
+    display:flex; justify-content:space-between; align-items:center;
   }
-  #rankings-btn:hover, #streaks-btn:hover { border-color:var(--accent); }
+  #lists-btn:hover, #lists-dd.open #lists-btn { border-color:var(--accent); }
+  #lists-btn .chev { color:var(--text-dim); font-size:11px; transition:transform .15s; }
+  #lists-dd.open .chev { transform:rotate(180deg); }
+  #lists-menu {
+    display:none; position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:50;
+    background:#0f1114; border:1px solid var(--panel-border); border-radius:8px; overflow:hidden;
+    box-shadow:0 8px 24px rgba(0,0,0,0.45);
+  }
+  #lists-dd.open #lists-menu { display:block; }
+  .lists-item { padding:9px 12px; font-size:13px; cursor:pointer; border-top:1px solid var(--panel-border); }
+  .lists-item:first-child { border-top:none; }
+  .lists-item:hover { background:#1d2127; }
+  .lists-item small { display:block; color:var(--text-dim); font-size:11px; margin-top:1px; }
+  #rankings-modal.wide { width:min(820px, 94vw); }
+  .p4p-cols { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:4px 6px 8px; }
+  .p4p-head { font-size:11px; font-weight:600; letter-spacing:0.6px; color:var(--text-dim); margin:6px 0 4px 10px; }
+  .p4p-row { display:flex; align-items:center; gap:9px; padding:6px 10px; border-radius:8px; font-size:12.5px; }
+  .p4p-row.clickable { cursor:pointer; }
+  .p4p-row.clickable:hover { background:#1d2127; }
+  .p4p-rk { width:24px; text-align:right; color:var(--text-dim); font-variant-numeric:tabular-nums; flex-shrink:0; }
+  .p4p-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .p4p-nm { flex:1; min-width:0; }
+  .p4p-dv { font-size:10.5px; color:var(--text-dim); white-space:nowrap; }
+  .p4p-mv { font-size:10.5px; width:26px; text-align:right; flex-shrink:0; }
+  .p4p-mv.up { color:#2E9E5B; } .p4p-mv.down { color:#E5484D; } .p4p-mv.nr { color:var(--accent); }
+  @media (max-width:700px) { .p4p-cols { grid-template-columns:1fr; } }
+
+  /* ---- Fighter card extras (opponent chips, grab handle) ---- */
+  .fc-grab { display:none; width:38px; height:4px; border-radius:2px; background:#3a3f47; margin:0 auto 10px; }
+  .fc-opps { display:none; flex-wrap:wrap; gap:6px; margin:2px 0 8px; } /* mobile only */
+  .fc-opp { font-size:11.5px; padding:4px 10px; border-radius:14px; border:1.5px solid var(--panel-border); background:#0f1114; color:var(--text); cursor:pointer; white-space:nowrap; }
+  .fc-opp:hover { background:#1d2127; }
+  .node circle.hit { stroke:none; fill:transparent; }
+
+  /* ---- Mobile-only UI: hidden on desktop ---- */
+  .m-only { display:none; }
+  #m-search { display:none; }
+
+  @media (max-width:760px) {
+    html, body { overscroll-behavior:none; }
+    #app { height:100dvh; width:100vw; }
+    #sidebar, #reset, #topbar, #tooltip { display:none !important; }
+    #canvas-wrap { width:100%; }
+    svg { touch-action:none; }
+    .m-only { display:flex; }
+
+    #m-top { position:absolute; top:0; left:0; right:0; z-index:30; padding:calc(env(safe-area-inset-top) + 8px) 10px 0; gap:8px; align-items:center; }
+    #m-pill {
+      flex:1; min-width:0; display:flex; align-items:center; gap:8px; padding:11px 14px; border-radius:22px;
+      background:rgba(21,24,29,0.96); border:1.5px solid #6b3a3d; color:var(--text-dim); font-size:14px; cursor:pointer;
+      box-shadow:0 4px 16px rgba(0,0,0,0.45);
+    }
+    #m-pill.has { color:var(--text); border-color:var(--accent); }
+    #m-pill-text { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    #m-pill-x { display:none; color:var(--text-dim); font-size:15px; padding:0 2px; }
+    #m-pill.has #m-pill-x { display:inline; }
+    .m-ib {
+      width:42px; height:42px; border-radius:50%; background:rgba(21,24,29,0.96); border:1px solid var(--panel-border);
+      color:var(--text); font-size:18px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;
+      box-shadow:0 4px 16px rgba(0,0,0,0.45);
+    }
+
+    #m-chips {
+      position:absolute; top:calc(env(safe-area-inset-top) + 62px); left:0; right:0; z-index:29; padding:0 10px; gap:6px;
+      overflow-x:auto; white-space:nowrap; scrollbar-width:none;
+    }
+    #m-chips::-webkit-scrollbar { display:none; }
+    .m-chip {
+      font-size:12.5px; padding:7px 12px; border-radius:16px; background:rgba(21,24,29,0.96); border:1px solid var(--panel-border);
+      color:#c9ccd1; flex-shrink:0; cursor:pointer;
+    }
+    .m-chip i { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; }
+    .m-chip.on { background:var(--accent); color:#0b0d10; border-color:var(--accent); font-weight:600; }
+
+    #m-fabs { position:absolute; right:12px; bottom:calc(env(safe-area-inset-bottom) + 16px); z-index:25; flex-direction:column; gap:10px; transition:bottom .2s; }
+    body.sheet-open #m-fabs { display:none; }
+    .m-fab {
+      width:46px; height:46px; border-radius:50%; background:rgba(21,24,29,0.97); border:1px solid #3a3f47; color:var(--text);
+      font-size:19px; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,0.5);
+    }
+
+    /* Fighter card becomes a bottom sheet */
+    #fighter-card {
+      position:fixed; left:0; right:0; bottom:0; top:auto; width:100%; max-height:none; border-radius:18px 18px 0 0;
+      border-left:none; border-right:none; border-bottom:none; padding:8px 14px calc(env(safe-area-inset-bottom) + 10px);
+      z-index:40; font-size:13.5px; transition:height .22s ease; overflow-y:hidden; touch-action:pan-y;
+    }
+    #fighter-card.open { display:block; }
+    #fighter-card.peek { height:168px; }
+    #fighter-card.half { height:52dvh; overflow-y:auto; }
+    #fighter-card.full { height:90dvh; overflow-y:auto; }
+    .fc-grab { display:block; padding:0; height:4px; cursor:grab; position:relative; }
+    .fc-grab::before { content:""; position:absolute; left:-30px; right:-30px; top:-10px; bottom:-14px; } /* bigger swipe target */
+    .fc-name { font-size:16px; }
+    .fc-opps { display:flex; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }
+    .fc-opps::-webkit-scrollbar { display:none; }
+    .fc-opp { font-size:12.5px; padding:7px 12px; }
+    #fc-close { font-size:20px; padding:6px 10px; }
+    .fight-row { padding:9px 0; }
+
+    /* Full-screen search */
+    #m-search { position:fixed; inset:0; z-index:90; background:var(--bg); flex-direction:column; }
+    #m-search.open { display:flex; }
+    #m-search-head { display:flex; gap:10px; align-items:center; padding:calc(env(safe-area-inset-top) + 10px) 12px 8px; }
+    #m-search-input { flex:1; }
+    #m-search-cancel { background:none; border:none; color:var(--accent); font-size:14.5px; cursor:pointer; padding:8px 4px; }
+    #m-search-body { flex:1; overflow-y:auto; padding:0 12px 24px; }
+    .ms-sec { font-size:11px; letter-spacing:0.6px; color:var(--text-dim); margin:16px 2px 8px; }
+    .ms-row { display:flex; align-items:center; gap:12px; padding:13px 6px; border-bottom:1px solid #1b1e23; cursor:pointer; }
+    .ms-row:active { background:#1d2127; }
+    .ms-dot { width:11px; height:11px; border-radius:50%; flex-shrink:0; }
+    .ms-nm { flex:1; font-size:15px; }
+    .ms-nm small { display:block; font-size:12px; color:var(--text-dim); margin-top:1px; }
+    .ms-chips { display:flex; flex-wrap:wrap; gap:8px; }
+    .ms-chip { font-size:13.5px; padding:9px 14px; border-radius:18px; background:var(--panel); border:1px solid var(--panel-border); cursor:pointer; }
+    .ms-chip:active { background:#1d2127; }
+
+    /* Lists popup + menu panel */
+    #m-lists { position:fixed; right:12px; bottom:calc(env(safe-area-inset-bottom) + 70px); z-index:60; width:min(300px, 86vw); background:#0f1114;
+      border:1px solid var(--panel-border); border-radius:12px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.55); display:none; }
+    #m-lists.open { display:block; }
+    #m-lists .lists-item { padding:14px 16px; font-size:15px; }
+    #m-menu { position:fixed; inset:0; z-index:80; background:rgba(0,0,0,0.6); display:none; }
+    #m-menu.open { display:block; }
+    #m-menu-panel { position:absolute; top:0; right:0; bottom:0; width:min(330px, 88vw); background:var(--panel); border-left:1px solid var(--panel-border);
+      padding:calc(env(safe-area-inset-top) + 14px) 16px 24px; overflow-y:auto; }
+    #m-menu-panel h1 { font-size:16px; margin:0 0 4px; }
+    #m-menu-panel .sub { font-size:12px; color:var(--text-dim); line-height:1.45; margin-bottom:10px; }
+    #m-menu-panel .legend-line { font-size:12.5px; margin:6px 0; }
+
+    /* Rankings modal goes full-screen on phones */
+    #rankings-modal, #rankings-modal.wide { width:100vw; max-height:100dvh; height:100dvh; border-radius:0; border:none; }
+    .rank-row { padding:12px 10px; }
+    .p4p-row { padding:9px 10px; font-size:13.5px; }
+    .p4p-dv { display:none; }
+  }
   #rankings-overlay {
     position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:100;
   }
@@ -105,15 +260,19 @@
     <div>
       <h1>UFC Championship Lineage</h1>
       <div class="sub">Every UFC title change, defense, interim fight and title draw, chained across divisions. Each dot is a fighter; each line is a title fight. Drag nodes, scroll to zoom, click a fighter for their title-fight history.</div>
-      <input type="text" id="search" placeholder="Search a fighter…" autocomplete="off">
+      <input type="text" id="search" placeholder="Search any fighter…" autocomplete="off">
       <div id="suggestions"></div>
     </div>
-    <div style="display:flex; flex-direction:column; gap:8px;">
-      <button id="rankings-btn" data-mode="defenses">View: most title defenses ranking →</button>
-      <button id="streaks-btn" data-mode="streaks">View: longest winning streaks →</button>
+    <div id="lists-dd">
+      <button id="lists-btn" aria-haspopup="true" aria-expanded="false"><span>View top lists</span><span class="chev">▼</span></button>
+      <div id="lists-menu" role="menu">
+        <div class="lists-item" role="menuitem" data-mode="p4p">Pound-for-pound<small>Official UFC poll, men's and women's</small></div>
+        <div class="lists-item" role="menuitem" data-mode="defenses">Most title defenses<small>Successful defenses only</small></div>
+        <div class="lists-item" role="menuitem" data-mode="streaks">Longest winning streaks<small>All UFC fights, not just title bouts</small></div>
+      </div>
     </div>
     <div>
-      <div class="sub" style="margin-bottom:8px;">Divisions (click to toggle)</div>
+      <div class="sub" style="margin-bottom:8px;">Divisions (click to isolate)<button id="show-all">Show all</button></div>
       <div id="legend"></div>
     </div>
     <div>
@@ -122,6 +281,10 @@
       <div class="legend-line"><span class="line-sample" style="border-top-style:dashed; border-top-color:#e8e9eb;"></span> Successful defense</div>
       <div class="legend-line"><span class="line-sample" style="border-top-style:dotted; border-top-color:#e8e9eb;"></span> Interim title</div>
       <div class="legend-line"><span class="line-sample" style="border-top-style:solid; border-top-color:#555;"></span> Draw / promoted</div>
+<div class="sub" style="margin:10px 0 6px;">When a fighter is selected</div>
+<div class="legend-line"><span class="line-sample" style="border-top-style:solid; border-top-width:3px; border-top-color:#2E9E5B;"></span> Won</div>
+<div class="legend-line"><span class="line-sample" style="border-top-style:solid; border-top-width:3px; border-top-color:#E5484D;"></span> Lost</div>
+<div class="legend-line"><span class="line-sample" style="border-top-style:solid; border-top-width:3px; border-top-color:#8a8f98;"></span> Draw / no contest</div>
     </div>
     <div id="detail">
       <div class="empty">Click any fighter to see their title-fight history and see who they connect to across divisions.</div>
@@ -131,7 +294,53 @@
     <div id="topbar"></div>
     <svg id="canvas"></svg>
     <div id="tooltip"></div>
+    <div id="fighter-card" aria-live="polite"></div>
     <button id="reset">Reset view</button>
+
+    <!-- Mobile-only controls -->
+    <div id="m-top" class="m-only">
+      <div id="m-pill" role="button" tabindex="0" aria-label="Search fighters">
+        <span aria-hidden="true">🔍</span><span id="m-pill-text">Search fighters</span><span id="m-pill-x" aria-label="Clear">✕</span>
+      </div>
+      <div class="m-ib" id="m-menu-btn" role="button" tabindex="0" aria-label="Menu">☰</div>
+    </div>
+    <div id="m-chips" class="m-only"></div>
+    <div id="m-fabs" class="m-only">
+      <div class="m-fab" id="m-lists-btn" role="button" tabindex="0" aria-label="Top lists">🏆</div>
+      <div class="m-fab" id="m-reset-btn" role="button" tabindex="0" aria-label="Reset view">⌖</div>
+    </div>
+  </div>
+</div>
+
+<div id="m-search">
+  <div id="m-search-head">
+    <input type="text" id="m-search-input" placeholder="Search any fighter…" autocomplete="off" autocapitalize="words" enterkeyhint="search">
+    <button id="m-search-cancel">Cancel</button>
+  </div>
+  <div id="m-search-body"></div>
+</div>
+
+<div id="m-lists" role="menu">
+  <div class="lists-item" role="menuitem" data-mode="p4p">Pound-for-pound<small>Official UFC poll, men's and women's</small></div>
+  <div class="lists-item" role="menuitem" data-mode="defenses">Most title defenses<small>Successful defenses only</small></div>
+  <div class="lists-item" role="menuitem" data-mode="streaks">Longest winning streaks<small>All UFC fights, not just title bouts</small></div>
+</div>
+
+<div id="m-menu">
+  <div id="m-menu-panel">
+    <h1>UFC Championship Lineage</h1>
+    <div class="sub">Every UFC title change, defense, interim fight and title draw. Each dot is a fighter; each line is a title fight. Pinch to zoom, drag to pan, tap a fighter for their history.</div>
+    <div class="sub" style="margin:14px 0 6px;">Fight type</div>
+    <div class="legend-line"><span class="line-sample" style="border-top-style:solid; border-top-color:#e8e9eb;"></span> Title change</div>
+    <div class="legend-line"><span class="line-sample" style="border-top-style:dashed; border-top-color:#e8e9eb;"></span> Successful defense</div>
+    <div class="legend-line"><span class="line-sample" style="border-top-style:dotted; border-top-color:#e8e9eb;"></span> Interim title</div>
+    <div class="legend-line"><span class="line-sample" style="border-top-style:solid; border-top-color:#555;"></span> Draw / promoted</div>
+    <div class="sub" style="margin:14px 0 6px;">When a fighter is selected</div>
+    <div class="legend-line"><span class="line-sample" style="border-top-style:solid; border-top-width:3px; border-top-color:#2E9E5B;"></span> Won</div>
+    <div class="legend-line"><span class="line-sample" style="border-top-style:solid; border-top-width:3px; border-top-color:#E5484D;"></span> Lost</div>
+    <div class="legend-line"><span class="line-sample" style="border-top-style:solid; border-top-width:3px; border-top-color:#8a8f98;"></span> Draw / no contest</div>
+    <div class="sub" style="margin:14px 0 6px;">Division colors</div>
+    <div id="m-legend"></div>
   </div>
 </div>
 
@@ -240,6 +449,15 @@ nodeSel.append("circle")
   .on("mousemove", (event) => moveTooltip(event))
   .on("mouseout", hideTooltip);
 
+// Bigger invisible tap target on touch devices so a thumb can land on small dots
+const IS_TOUCH = window.matchMedia("(pointer: coarse)").matches;
+if (IS_TOUCH) {
+  nodeSel.append("circle")
+    .attr("class", "hit")
+    .attr("r", d => Math.max(radiusScale(d.fightCount) + 8, 20))
+    .on("click", (event, d) => selectFighter(d.id));
+}
+
 nodeSel.append("text")
   .attr("dy", d => -(radiusScale(d.fightCount) + 4))
   .attr("text-anchor", "middle")
@@ -294,13 +512,67 @@ DIVISION_ORDER.forEach(div => {
   const item = document.createElement("div");
   item.className = "legend-item";
   item.innerHTML = `<span class="swatch" style="background:${DIVISION_COLORS[div]}"></span><span>${div} <span style="color:#666">(${count})</span></span>`;
-  item.addEventListener("click", () => {
-    if (activeDivisions.has(div)) { activeDivisions.delete(div); item.classList.add("off"); }
-    else { activeDivisions.add(div); item.classList.remove("off"); }
-    applyDivisionFilter();
-  });
+  item.dataset.div = div;
+  item.addEventListener("click", () => isolateDivision(div));
   legend.appendChild(item);
 });
+
+// Click a division -> show only it and zoom to it; click it again -> show everything
+function isolateDivision(div) {
+  const isSolo = activeDivisions.size === 1 && activeDivisions.has(div);
+  activeDivisions.clear();
+  if (isSolo) DIVISION_ORDER.forEach(d => activeDivisions.add(d));
+  else activeDivisions.add(div);
+  clearSelection(); // leave any selected fighter
+  syncLegend();
+  applyDivisionFilter();
+  const mobileOpts = IS_MOBILE() ? { reserveTop: 110 } : {};
+  if (isSolo) fitView(nodes, mobileOpts); else fitView(divisionNodes(div), mobileOpts);
+}
+
+function syncLegend() {
+  const solo = activeDivisions.size < DIVISION_ORDER.length;
+  legend.querySelectorAll(".legend-item").forEach(el => el.classList.toggle("off", solo && !activeDivisions.has(el.dataset.div)));
+  document.getElementById("show-all").style.display = solo ? "inline" : "none";
+  document.querySelectorAll("#m-chips .m-chip").forEach(c => c.classList.toggle("on", c.dataset.div === "" ? !solo : (solo && activeDivisions.has(c.dataset.div))));
+}
+document.getElementById("show-all").addEventListener("click", () => {
+  DIVISION_ORDER.forEach(d => activeDivisions.add(d));
+  clearSelection();
+  syncLegend();
+  applyDivisionFilter();
+  fitView(nodes);
+});
+
+// Fighters who appear in at least one title fight in the given division
+function divisionNodes(div) {
+  const names = new Set();
+  FIGHTS.forEach(f => {
+    if (f.division !== div) return;
+    names.add(f.winner);
+    if (f.loser && f.loser !== "—") names.add(f.loser);
+  });
+  return nodes.filter(n => names.has(n.id));
+}
+
+// Smoothly zoom/pan so every given node (plus label padding) is in view
+function fitView(ns, opts = {}) {
+  if (!ns.length) return;
+  width = wrap.clientWidth; height = wrap.clientHeight;
+  const reserveRight = opts.reserveRight || 0;   // keep this many px free on the right (for the fighter card)
+  const maxK = opts.maxK || 3;
+  const reserveBottom = opts.reserveBottom || 0;  // keep this many px free at the bottom (mobile sheet)
+  const reserveTop = opts.reserveTop || 0;        // ...and at the top (mobile search bar + chips)
+  const availW = Math.max(200, width - reserveRight);
+  const availH = Math.max(160, height - reserveBottom - reserveTop);
+  const xs = ns.map(n => n.x), ys = ns.map(n => n.y);
+  const pad = 70;
+  const x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad;
+  const y0 = Math.min(...ys) - pad, y1 = Math.max(...ys) + pad;
+  const k = Math.max(0.1, Math.min(maxK, availW / (x1 - x0), availH / (y1 - y0)));
+  const tx = availW / 2 - k * (x0 + x1) / 2, ty = reserveTop + availH / 2 - k * (y0 + y1) / 2;
+  svg.transition().duration(700).call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(k));
+}
 
 function applyDivisionFilter() {
   linkSel.style("display", d => activeDivisions.has(d.division) ? null : "none");
@@ -328,7 +600,39 @@ searchInput.addEventListener("input", () => {
 });
 
 // ---------- Selection / detail panel ----------
+const WLD = { win: "#2E9E5B", loss: "#E5484D", draw: "#8a8f98" };
+function fightResultFor(l, name) {
+  if (l.type === "draw" || l.type === "promoted") return "draw";
+  return l.winner === name ? "win" : "loss";
+}
+function isNoContestLike(l) { return l.type === "draw" || l.type === "promoted"; }
+
+// Selected fighter's fights: solid green (won) / red (lost) / gray (draw, no contest). Everything else keeps its normal style.
+function applySelectionStyles(name, connected) {
+  const involves = l => (l.source.id || l.source) === name || (l.target.id || l.target) === name;
+  linkSel
+    .attr("stroke", l => involves(l) ? WLD[fightResultFor(l, name)] : typeToColor(l.type, l.division))
+    .attr("stroke-width", l => involves(l) ? 2.8 : typeToWidth(l.type))
+    .attr("stroke-dasharray", l => involves(l) ? null : typeToDash(l.type))
+    .attr("stroke-opacity", null);
+  nodeSel.select("circle")
+    .attr("stroke", d => {
+      if (d.id === name || !connected.has(d.id)) return "#0b0d10";
+      const fs = links.filter(l => (l.winner === name && l.loser === d.id) || (l.loser === name && l.winner === d.id));
+      const results = new Set(fs.map(l => fightResultFor(l, name)));
+      return results.size === 1 ? WLD[Array.from(results)[0]] : "#e8e9eb";
+    })
+    .attr("stroke-width", d => (d.id !== name && connected.has(d.id)) ? 3 : 1.5);
+}
+function clearSelectionStyles() {
+  linkSel
+    .attr("stroke", l => typeToColor(l.type, l.division))
+    .attr("stroke-width", l => typeToWidth(l.type))
+    .attr("stroke-dasharray", l => typeToDash(l.type));
+  nodeSel.select("circle").attr("stroke", "#0b0d10").attr("stroke-width", 1.5);
+}
 let selected = null;
+const fighterCard = document.getElementById("fighter-card");
 function selectFighter(name) {
   selected = name;
   const node = nodeById.get(name);
@@ -346,6 +650,7 @@ function selectFighter(name) {
     const s = l.source.id || l.source, t = l.target.id || l.target;
     return s !== name && t !== name;
   });
+  applySelectionStyles(name, connected);
 
   const detail = document.getElementById("detail");
   const sortedFights = node.fights.slice().sort((a,b) => a.date.localeCompare(b.date));
@@ -355,23 +660,125 @@ function selectFighter(name) {
     const verb = f.type === "draw" ? "drew with" : (f.type === "promoted" ? "promoted over" : (won ? "def." : "lost to"));
     const color = DIVISION_COLORS[f.division] || "#999";
     return `<div class="fight-row">
-      <span class="badge" style="background:${color}22; color:${color}">${f.division}</span>${verb} <b>${opponent === "—" ? "(vacant)" : opponent}</b>
+      <span class="badge" style="background:${color}22; color:${color}">${f.division}</span><span style="color:${WLD[f.type === 'draw' || f.type === 'promoted' ? 'draw' : (won ? 'win' : 'loss')]}; font-weight:600;">${verb}</span> <b>${opponent === "—" ? "(vacant)" : opponent}</b>
       <div class="ev">${f.event} — ${f.date} · ${f.type}</div>
     </div>`;
   }).join("");
 
+  let w = 0, l = 0, d = 0;
+  sortedFights.forEach(f => {
+    if (f.type === "draw") d++;
+    else if (f.type === "promoted") return;
+    else if (f.winner === name) w++; else l++;
+  });
+  const record = `<span style="color:${WLD.win}">${w}W</span> · <span style="color:${WLD.loss}">${l}L</span>${d ? ` · <span style="color:${WLD.draw}">${d}D</span>` : ""}`;
+  const divsTxt = Array.from(node.divisions).join(", ");
+
+  // Sidebar keeps a short summary; the full history lives in the card next to the fighter's tree
   detail.innerHTML = `<h2>${name}</h2>
-    <div class="sub" style="margin-bottom:8px;">${Array.from(node.divisions).join(", ")} · ${node.fightCount} title fight${node.fightCount>1?'s':''}</div>
-    ${rows}`;
+    <div class="sub" style="margin-bottom:4px;">${divsTxt}</div>
+    <div style="font-size:12.5px;">Title-fight record: ${record}</div>`;
+
+  // Opponent chips: tap to hop to that fighter. Border color = result against the selected fighter.
+  const oppResults = new Map();
+  sortedFights.forEach(f => {
+    const opp = f.winner === name ? f.loser : f.winner;
+    if (!opp || opp === "—" || !nodeById.has(opp)) return;
+    if (!oppResults.has(opp)) oppResults.set(opp, new Set());
+    oppResults.get(opp).add(fightResultFor(f, name));
+  });
+  const oppChips = Array.from(oppResults.entries()).map(([opp, rs]) => {
+    const col = rs.size === 1 ? WLD[Array.from(rs)[0]] : "#e8e9eb";
+    return `<button class="fc-opp" data-opp="${opp.replace(/"/g, '&quot;')}" style="border-color:${col}">${opp}</button>`;
+  }).join("");
+
+  fighterCard.innerHTML = `<div class="fc-grab" id="fc-grab"></div>
+    <div class="fc-head">
+      <div><div class="fc-name">${name}</div><div class="fc-sub">${divsTxt}</div></div>
+      <button id="fc-close" aria-label="Close">✕</button>
+    </div>
+    <div class="fc-record">${record} <span class="fc-sub">· ${node.fightCount} title fight${node.fightCount > 1 ? "s" : ""}</span></div>
+    <div class="fc-opps">${oppChips}</div>
+    <div class="fc-rows">${rows}</div>`;
+  fighterCard.classList.add("open");
+  fighterCard.scrollTop = 0;
+  document.getElementById("fc-close").addEventListener("click", clearSelection);
+  fighterCard.querySelectorAll(".fc-opp").forEach(b => b.addEventListener("click", () => selectFighter(b.dataset.opp)));
+  setMobilePill(name);
+
+  if (IS_MOBILE()) {
+    setSheetState(fighterCard.classList.contains("half") || fighterCard.classList.contains("full") ? currentSheetState() : "peek");
+    document.body.classList.add("sheet-open");
+    wireSheetSwipe();
+  }
+
+  // Bring the fighter's whole tree into view, leaving room for the card (right side on desktop, bottom sheet on phones)
+  const treeNodes = nodes.filter(n => connected.has(n.id));
+  if (IS_MOBILE()) fitView(treeNodes, { reserveBottom: sheetHeightPx() + 12, reserveTop: 110, maxK: 2.2 });
+  else fitView(treeNodes, { reserveRight: fighterCard.offsetWidth + 28, maxK: 2.2 });
+}
+
+// ---------- Mobile helpers ----------
+function IS_MOBILE() { return window.matchMedia("(max-width: 760px)").matches; }
+function currentSheetState() { return ["full", "half", "peek"].find(s => fighterCard.classList.contains(s)) || "peek"; }
+function sheetHeightPx() {
+  const s = currentSheetState();
+  return s === "full" ? window.innerHeight * 0.9 : s === "half" ? window.innerHeight * 0.52 : 168;
+}
+function setSheetState(state) {
+  fighterCard.classList.remove("peek", "half", "full");
+  fighterCard.classList.add(state);
+  fighterCard.scrollTop = 0;
+}
+let sheetSwipeWired = false;
+function wireSheetSwipe() {
+  if (sheetSwipeWired) return;
+  sheetSwipeWired = true;
+  let startY = null, startState = null;
+  fighterCard.addEventListener("touchstart", (e) => {
+    // Swipes that start on the grab handle / header always control the sheet; elsewhere only when not scrolled
+    const onHandle = e.target.closest(".fc-grab, .fc-head, .fc-record");
+    if (!onHandle && fighterCard.scrollTop > 0) { startY = null; return; }
+    startY = e.touches[0].clientY; startState = currentSheetState();
+  }, { passive: true });
+  fighterCard.addEventListener("touchend", (e) => {
+    if (startY === null) return;
+    const dy = e.changedTouches[0].clientY - startY;
+    startY = null;
+    const order = ["peek", "half", "full"];
+    const i = order.indexOf(startState);
+    if (dy < -35 && i < 2) { setSheetState(order[i + 1]); refit(); }
+    else if (dy > 35) { if (i === 0) clearSelection(); else { setSheetState(order[i - 1]); refit(); } }
+    else if (Math.abs(dy) < 8 && e.target.closest(".fc-grab")) { setSheetState(order[(i + 1) % 3]); refit(); }
+  }, { passive: true });
+}
+function refit() {
+  if (!selected) return;
+  const connected = new Set([selected]);
+  links.forEach(l => { const s = l.source.id || l.source, t = l.target.id || l.target; if (s === selected) connected.add(t); if (t === selected) connected.add(s); });
+  setTimeout(() => fitView(nodes.filter(n => connected.has(n.id)), { reserveBottom: Math.min(sheetHeightPx(), window.innerHeight * 0.6) + 12, reserveTop: 110, maxK: 2.2 }), 240);
+}
+const mPill = document.getElementById("m-pill");
+function setMobilePill(name) {
+  document.getElementById("m-pill-text").textContent = name || "Search fighters";
+  mPill.classList.toggle("has", !!name);
+}
+
+function clearSelection() {
+  selected = null;
+  nodeSel.classed("dim", false);
+  linkSel.classed("dim", false);
+  clearSelectionStyles();
+  fighterCard.classList.remove("open", "peek", "half", "full");
+  document.body.classList.remove("sheet-open");
+  setMobilePill(null);
+  searchInput.value = "";
+  suggestionsBox.innerHTML = "";
+  document.getElementById("detail").innerHTML = `<div class="empty">Click any fighter to see their title-fight history and see who they connect to across divisions.</div>`;
 }
 
 svg.on("click", (event) => {
-  if (event.target.tagName === "svg" || event.target === g.node()) {
-    selected = null;
-    nodeSel.classed("dim", false);
-    linkSel.classed("dim", false);
-    document.getElementById("detail").innerHTML = `<div class="empty">Click any fighter to see their title-fight history and see who they connect to across divisions.</div>`;
-  }
+  if (event.target.tagName === "svg" || event.target === g.node()) clearSelection();
 });
 
 // ---------- Reset / resize ----------
@@ -444,28 +851,62 @@ function renderStreakRankings() {
   wireRankRows();
 }
 
+function renderP4PRankings() {
+  document.getElementById("rankings-title").textContent = "Pound-for-pound rankings";
+  document.getElementById("rankings-sub").textContent = `Official UFC poll (ufc.com/rankings), last updated ${P4P.updated}. Dots match the division colors on the map. Click a fighter to find them.`;
+  const col = (label, list) => `<div><div class="p4p-head">${label}</div>${list.map(r => {
+    const onMap = nodeById.has(r.name);
+    const mv = r.move === "NR" ? `<span class="p4p-mv nr">NEW</span>`
+      : r.move === "+1" ? `<span class="p4p-mv up">▲1</span>`
+      : r.move === "-1" ? `<span class="p4p-mv down">▼1</span>`
+      : `<span class="p4p-mv"></span>`;
+    return `<div class="p4p-row${onMap ? " clickable" : ""}" data-name="${r.name.replace(/"/g, '&quot;')}">
+      <span class="p4p-rk">${r.tie ? "T" : ""}${r.rank}</span>
+      <span class="p4p-dot" style="background:${DIVISION_COLORS[r.division] || "#999"}"></span>
+      <span class="p4p-nm">${r.name}</span>
+      <span class="p4p-dv">${r.division}</span>${mv}
+    </div>`;
+  }).join("")}</div>`;
+  document.getElementById("rankings-list").innerHTML = `<div class="p4p-cols">${col("MEN'S", P4P.men)}${col("WOMEN'S", P4P.women)}</div>`;
+  document.querySelectorAll("#rankings-list .p4p-row.clickable").forEach(row => row.addEventListener("click", () => focusFighterFromList(row.dataset.name)));
+}
+
+function focusFighterFromList(name) {
+  if (!nodeById.has(name)) return;
+  if (activeDivisions.size < DIVISION_ORDER.length) { // leave division-isolate mode so the fighter is visible
+    DIVISION_ORDER.forEach(d => activeDivisions.add(d));
+    syncLegend();
+    applyDivisionFilter();
+  }
+  selectFighter(name);
+  searchInput.value = name;
+  suggestionsBox.innerHTML = "";
+  closeRankings();
+}
+
 function wireRankRows() {
   document.querySelectorAll("#rankings-list .rank-row").forEach(row => {
-    row.addEventListener("click", () => {
-      if (!nodeById.has(row.dataset.name)) return;
-      selectFighter(row.dataset.name);
-      searchInput.value = row.dataset.name;
-      suggestionsBox.innerHTML = "";
-      closeRankings();
-    });
+    row.addEventListener("click", () => focusFighterFromList(row.dataset.name));
   });
 }
 
 const rankingsOverlay = document.getElementById("rankings-overlay");
 function openRankings(mode) {
-  if (mode === "streaks") renderStreakRankings();
+  document.getElementById("rankings-modal").classList.toggle("wide", mode === "p4p");
+  if (mode === "p4p") renderP4PRankings();
+  else if (mode === "streaks") renderStreakRankings();
   else renderDefenseRankings();
   rankingsOverlay.classList.add("open");
 }
 function closeRankings() { rankingsOverlay.classList.remove("open"); }
 
-document.getElementById("rankings-btn").addEventListener("click", () => openRankings("defenses"));
-document.getElementById("streaks-btn").addEventListener("click", () => openRankings("streaks"));
+// "View top lists" dropdown
+const listsDd = document.getElementById("lists-dd");
+const listsBtn = document.getElementById("lists-btn");
+function setListsOpen(open) { listsDd.classList.toggle("open", open); listsBtn.setAttribute("aria-expanded", String(open)); }
+listsBtn.addEventListener("click", (e) => { e.stopPropagation(); setListsOpen(!listsDd.classList.contains("open")); });
+document.querySelectorAll(".lists-item").forEach(item => item.addEventListener("click", () => { setListsOpen(false); openRankings(item.dataset.mode); }));
+document.addEventListener("click", (e) => { if (!listsDd.contains(e.target)) setListsOpen(false); });
 document.getElementById("rankings-close").addEventListener("click", closeRankings);
 rankingsOverlay.addEventListener("click", (event) => {
   if (event.target === rankingsOverlay) closeRankings();
@@ -474,8 +915,89 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") closeRankings();
 });
 
-// Initial gentle zoom-out so the whole graph is visible-ish
-svg.call(zoom.transform, d3.zoomIdentity.translate(width*0.15, height*0.1).scale(0.8));
+// ---------- Mobile UI (only visible at <= 760px wide; desktop is untouched) ----------
+const DIV_ABBR = { "Heavyweight":"HW", "Light Heavyweight":"LHW", "Middleweight":"MW", "Welterweight":"WW", "Lightweight":"LW", "Featherweight":"FW", "Bantamweight":"BW", "Flyweight":"FLW", "Women's Bantamweight":"W-BW", "Women's Flyweight":"W-FLW", "Women's Strawweight":"W-SW", "Women's Featherweight":"W-FW", "BMF":"BMF", "Openweight":"Open" };
+const CURRENT_CHAMPS = ["Tom Aspinall", "Carlos Ulberg", "Sean Strickland", "Islam Makhachev", "Justin Gaethje", "Alexander Volkanovski", "Petr Yan", "Joshua Van", "Kayla Harrison", "Natália Silva", "Mackenzie Dern"];
+const lastName = n => n.split(" ").slice(-1)[0];
+
+// Division chips
+const mChips = document.getElementById("m-chips");
+mChips.innerHTML = `<div class="m-chip on" data-div="">All</div>` + DIVISION_ORDER.map(d =>
+  `<div class="m-chip" data-div="${d.replace(/"/g, '&quot;')}"><i style="background:${DIVISION_COLORS[d]}"></i>${DIV_ABBR[d] || d}</div>`).join("");
+mChips.querySelectorAll(".m-chip").forEach(c => c.addEventListener("click", () => {
+  if (c.dataset.div === "") {
+    DIVISION_ORDER.forEach(d => activeDivisions.add(d));
+    clearSelection(); syncLegend(); applyDivisionFilter(); fitView(nodes, { reserveTop: 110 });
+  } else isolateDivision(c.dataset.div);
+}));
+
+// Menu legend (division colors)
+document.getElementById("m-legend").innerHTML = DIVISION_ORDER.map(d =>
+  `<div class="legend-line"><span class="swatch" style="background:${DIVISION_COLORS[d]}"></span> ${d}</div>`).join("");
+
+// Full-screen search
+const mSearch = document.getElementById("m-search");
+const mSearchInput = document.getElementById("m-search-input");
+const mSearchBody = document.getElementById("m-search-body");
+function recordFor(n) {
+  let w = 0, l = 0;
+  n.fights.forEach(f => { if (f.type === "draw" || f.type === "promoted") return; if (f.winner === n.id) w++; else l++; });
+  return `${w}W ${l}L`;
+}
+// A match at the start of any word in the name (first or last) ranks above a mid-word match
+function wordStarts(name, q) { return name.toLowerCase().split(/\s+/).some(t => t.startsWith(q)) ? 1 : 0; }
+function renderMobileSearch() {
+  const q = mSearchInput.value.trim().toLowerCase();
+  if (!q) {
+    const chip = n => `<div class="ms-chip" data-name="${n.replace(/"/g, '&quot;')}">${lastName(n)}</div>`;
+    mSearchBody.innerHTML =
+      `<div class="ms-sec">CURRENT CHAMPIONS</div><div class="ms-chips">${CURRENT_CHAMPS.filter(n => nodeById.has(n)).map(chip).join("")}</div>` +
+      `<div class="ms-sec">POUND-FOR-POUND</div><div class="ms-chips">${P4P.men.slice(0, 5).concat(P4P.women.slice(0, 3)).filter(r => nodeById.has(r.name)).map(r => chip(r.name)).join("")}</div>`;
+  } else {
+    const matches = nodes.filter(n => n.id.toLowerCase().includes(q))
+      .sort((a, b) => (wordStarts(b.id, q) - wordStarts(a.id, q)) || b.fightCount - a.fightCount).slice(0, 30);
+    mSearchBody.innerHTML = matches.length ? matches.map(n =>
+      `<div class="ms-row" data-name="${n.id.replace(/"/g, '&quot;')}"><span class="ms-dot" style="background:${DIVISION_COLORS[n.primary] || "#999"}"></span>
+       <span class="ms-nm">${n.id}<small>${Array.from(n.divisions).join(", ")} · ${recordFor(n)}</small></span><span style="color:var(--text-dim)">›</span></div>`).join("")
+      : `<div class="ms-sec" style="text-transform:none; font-size:13px;">No fighters match “${mSearchInput.value}”.</div>`;
+  }
+  mSearchBody.querySelectorAll("[data-name]").forEach(el => el.addEventListener("click", () => pickMobileFighter(el.dataset.name)));
+}
+function openMobileSearch() { mSearch.classList.add("open"); mSearchInput.value = ""; renderMobileSearch(); setTimeout(() => mSearchInput.focus(), 50); }
+function closeMobileSearch() { mSearch.classList.remove("open"); mSearchInput.blur(); }
+function pickMobileFighter(name) {
+  closeMobileSearch();
+  if (activeDivisions.size < DIVISION_ORDER.length) { DIVISION_ORDER.forEach(d => activeDivisions.add(d)); syncLegend(); applyDivisionFilter(); }
+  selectFighter(name);
+}
+mSearchInput.addEventListener("input", renderMobileSearch);
+document.getElementById("m-search-cancel").addEventListener("click", closeMobileSearch);
+mPill.addEventListener("click", (e) => { if (e.target.id === "m-pill-x") { clearSelection(); return; } openMobileSearch(); });
+
+// Menu, lists popup, reset
+const mMenu = document.getElementById("m-menu");
+document.getElementById("m-menu-btn").addEventListener("click", () => mMenu.classList.add("open"));
+mMenu.addEventListener("click", (e) => { if (e.target === mMenu) mMenu.classList.remove("open"); });
+const mLists = document.getElementById("m-lists");
+document.getElementById("m-lists-btn").addEventListener("click", (e) => { e.stopPropagation(); mLists.classList.toggle("open"); });
+mLists.querySelectorAll(".lists-item").forEach(i => i.addEventListener("click", () => mLists.classList.remove("open")));
+document.addEventListener("click", (e) => { if (!mLists.contains(e.target)) mLists.classList.remove("open"); });
+document.getElementById("m-reset-btn").addEventListener("click", () => {
+  DIVISION_ORDER.forEach(d => activeDivisions.add(d));
+  clearSelection(); syncLegend(); applyDivisionFilter(); fitView(nodes, { reserveTop: 110 });
+});
+
+// Initial view
+if (IS_MOBILE()) {
+  // Fit the whole graph once the layout has mostly settled
+  let fitted = false;
+  const fitOnce = () => { if (fitted) return; fitted = true; fitView(nodes, { reserveTop: 110 }); };
+  setTimeout(fitOnce, 1800);
+  simulation.on("end.mobilefit", fitOnce);
+} else {
+  // Initial gentle zoom-out so the whole graph is visible-ish
+  svg.call(zoom.transform, d3.zoomIdentity.translate(width*0.15, height*0.1).scale(0.8));
+}
 </script>
 </body>
 </html>
