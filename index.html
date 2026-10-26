@@ -175,9 +175,10 @@
     #fighter-card {
       position:fixed; left:0; right:0; bottom:0; top:auto; width:100%; max-height:none; border-radius:18px 18px 0 0;
       border-left:none; border-right:none; border-bottom:none; padding:8px 14px calc(env(safe-area-inset-bottom) + 10px);
-      z-index:40; font-size:13.5px; transition:height .22s ease; overflow-y:hidden; touch-action:pan-y;
+      z-index:40; font-size:13.5px; overflow-y:hidden; touch-action:pan-y; will-change:transform;
     }
-    #fighter-card.open { display:block; }
+    #fighter-card.open { display:block; animation:sheet-up .3s cubic-bezier(.2,.8,.2,1); }
+    @keyframes sheet-up { from { transform:translateY(100%); } to { transform:translateY(0); } }
     #fighter-card.peek { height:168px; }
     #fighter-card.half { height:52dvh; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; touch-action:pan-y; }
     #fighter-card.full { height:90dvh; overflow-y:auto; }
@@ -702,7 +703,7 @@ function selectFighter(name) {
     <div class="fc-rows">${rows}</div>`;
   fighterCard.classList.add("open");
   fighterCard.scrollTop = 0;
-  document.getElementById("fc-close").addEventListener("click", clearSelection);
+  document.getElementById("fc-close").addEventListener("click", closeSheetAnimated);
   fighterCard.querySelectorAll(".fc-opp").forEach(b => b.addEventListener("click", () => selectFighter(b.dataset.opp)));
   setMobilePill(name);
 
@@ -730,21 +731,59 @@ function setSheetState(state) {
 }
 // The sheet has one fixed height. Scrolling inside it just scrolls the fight list;
 // a downward swipe on the handle/header (or from the top of the list) closes it.
+// Slide the sheet off the bottom of the screen, then clear the selection
+function closeSheetAnimated() {
+  if (!IS_MOBILE() || !fighterCard.classList.contains("open")) { clearSelection(); return; }
+  fighterCard.style.transition = "transform .26s cubic-bezier(.4,0,.8,.6)";
+  fighterCard.style.transform = "translateY(105%)";
+  setTimeout(() => {
+    clearSelection();
+    fighterCard.style.transition = "";
+    fighterCard.style.transform = "";
+  }, 270);
+}
+
 let sheetSwipeWired = false;
 function wireSheetSwipe() {
   if (sheetSwipeWired) return;
   sheetSwipeWired = true;
-  let startY = null, canClose = false;
+  let startY = null, canClose = false, dragging = false, lastDy = 0, lastT = 0, velocity = 0;
   fighterCard.addEventListener("touchstart", (e) => {
     startY = e.touches[0].clientY;
     const onHandle = !!e.target.closest(".fc-grab, .fc-head, .fc-record, .fc-opps");
     canClose = onHandle || fighterCard.scrollTop <= 0;
+    dragging = false; lastDy = 0; lastT = performance.now(); velocity = 0;
   }, { passive: true });
+  // The sheet follows your finger while you drag it down
+  fighterCard.addEventListener("touchmove", (e) => {
+    if (startY === null) return;
+    const dy = e.touches[0].clientY - startY;
+    if (canClose && dy > 0 && fighterCard.scrollTop <= 0) {
+      if (!dragging) { dragging = true; fighterCard.style.transition = "none"; }
+      e.preventDefault();
+      const now = performance.now();
+      if (now > lastT) velocity = (dy - lastDy) / (now - lastT);
+      lastDy = dy; lastT = now;
+      fighterCard.style.transform = `translateY(${dy}px)`;
+    } else if (dragging) {
+      fighterCard.style.transform = "translateY(0)";
+    }
+  }, { passive: false });
   fighterCard.addEventListener("touchend", (e) => {
     if (startY === null) return;
     const dy = e.changedTouches[0].clientY - startY;
     startY = null;
-    if (canClose && dy > 60 && fighterCard.scrollTop <= 0) clearSelection();
+    if (!dragging) return;
+    dragging = false;
+    // Close on a long drag or a quick flick; otherwise spring back
+    if (dy > 110 || (dy > 60 && velocity > 0.8)) {
+      fighterCard.style.transition = "transform .24s ease-out";
+      closeSheetAnimated();
+    } else {
+      fighterCard.style.transition = "transform .22s cubic-bezier(.2,.8,.2,1)";
+      fighterCard.style.transform = "";
+      setTimeout(() => { fighterCard.style.transition = ""; }, 240);
+    }
   }, { passive: true });
 }
 function refit() {
@@ -773,7 +812,7 @@ function clearSelection() {
 }
 
 svg.on("click", (event) => {
-  if (event.target.tagName === "svg" || event.target === g.node()) clearSelection();
+  if (event.target.tagName === "svg" || event.target === g.node()) closeSheetAnimated();
 });
 
 // ---------- Reset / resize ----------
