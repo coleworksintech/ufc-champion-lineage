@@ -179,7 +179,7 @@
     }
     #fighter-card.open { display:block; }
     #fighter-card.peek { height:168px; }
-    #fighter-card.half { height:52dvh; overflow-y:auto; }
+    #fighter-card.half { height:52dvh; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; touch-action:pan-y; }
     #fighter-card.full { height:90dvh; overflow-y:auto; }
     .fc-grab { display:block; padding:0; height:4px; cursor:grab; position:relative; }
     .fc-grab::before { content:""; position:absolute; left:-30px; right:-30px; top:-10px; bottom:-14px; } /* bigger swipe target */
@@ -707,8 +707,8 @@ function selectFighter(name) {
   setMobilePill(name);
 
   if (IS_MOBILE()) {
-    // Open at half height (the same view you get after the first swipe up); keep the size if already expanded
-    setSheetState(fighterCard.classList.contains("full") ? "full" : "half");
+    // Fixed half-height sheet; the list inside scrolls
+    setSheetState("half");
     document.body.classList.add("sheet-open");
     wireSheetSwipe();
   }
@@ -722,35 +722,29 @@ function selectFighter(name) {
 // ---------- Mobile helpers ----------
 function IS_MOBILE() { return window.matchMedia("(max-width: 760px)").matches; }
 function currentSheetState() { return ["full", "half", "peek"].find(s => fighterCard.classList.contains(s)) || "peek"; }
-function sheetHeightPx() {
-  const s = currentSheetState();
-  return s === "full" ? window.innerHeight * 0.9 : s === "half" ? window.innerHeight * 0.52 : 168;
-}
+function sheetHeightPx() { return window.innerHeight * 0.52; }
 function setSheetState(state) {
   fighterCard.classList.remove("peek", "half", "full");
   fighterCard.classList.add(state);
   fighterCard.scrollTop = 0;
 }
+// The sheet has one fixed height. Scrolling inside it just scrolls the fight list;
+// a downward swipe on the handle/header (or from the top of the list) closes it.
 let sheetSwipeWired = false;
 function wireSheetSwipe() {
   if (sheetSwipeWired) return;
   sheetSwipeWired = true;
-  let startY = null, startState = null;
+  let startY = null, canClose = false;
   fighterCard.addEventListener("touchstart", (e) => {
-    // Swipes that start on the grab handle / header always control the sheet; elsewhere only when not scrolled
-    const onHandle = e.target.closest(".fc-grab, .fc-head, .fc-record");
-    if (!onHandle && fighterCard.scrollTop > 0) { startY = null; return; }
-    startY = e.touches[0].clientY; startState = currentSheetState();
+    startY = e.touches[0].clientY;
+    const onHandle = !!e.target.closest(".fc-grab, .fc-head, .fc-record, .fc-opps");
+    canClose = onHandle || fighterCard.scrollTop <= 0;
   }, { passive: true });
   fighterCard.addEventListener("touchend", (e) => {
     if (startY === null) return;
     const dy = e.changedTouches[0].clientY - startY;
     startY = null;
-    const order = ["peek", "half", "full"];
-    const i = order.indexOf(startState);
-    if (dy < -35 && i < 2) { setSheetState(order[i + 1]); refit(); }
-    else if (dy > 35) { if (i === 0) clearSelection(); else { setSheetState(order[i - 1]); refit(); } }
-    else if (Math.abs(dy) < 8 && e.target.closest(".fc-grab")) { setSheetState(order[(i + 1) % 3]); refit(); }
+    if (canClose && dy > 60 && fighterCard.scrollTop <= 0) clearSelection();
   }, { passive: true });
 }
 function refit() {
