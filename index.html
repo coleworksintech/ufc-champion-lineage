@@ -887,12 +887,12 @@ function renderStreakRankings() {
 
 function renderP4PRankings() {
   document.getElementById("rankings-title").textContent = "Pound-for-pound rankings";
-  document.getElementById("rankings-sub").textContent = `Official UFC poll (ufc.com/rankings), last updated ${P4P.updated}. Dots match the division colors on the map. Click a fighter to find them.`;
+  document.getElementById("rankings-sub").textContent = `${P4P.source || "Official UFC poll (ufc.com/rankings)"}, updated ${P4P.updated}. Dots match the division colors on the map. Click a fighter to find them.`;
   const col = (label, list) => `<div><div class="p4p-head">${label}</div>${list.map(r => {
     const onMap = nodeById.has(r.name);
+    const mm = /^([+-])(\d+)$/.exec(r.move || "");
     const mv = r.move === "NR" ? `<span class="p4p-mv nr">NEW</span>`
-      : r.move === "+1" ? `<span class="p4p-mv up">▲1</span>`
-      : r.move === "-1" ? `<span class="p4p-mv down">▼1</span>`
+      : mm ? `<span class="p4p-mv ${mm[1] === "+" ? "up" : "down"}">${mm[1] === "+" ? "▲" : "▼"}${mm[2]}</span>`
       : `<span class="p4p-mv"></span>`;
     return `<div class="p4p-row${onMap ? " clickable" : ""}" data-name="${r.name.replace(/"/g, '&quot;')}">
       <span class="p4p-rk">${r.tie ? "T" : ""}${r.rank}</span>
